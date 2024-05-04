@@ -78,7 +78,7 @@ generate_pot () {
     for lang in $LANGUAGES_LIST
     do
         echo "${lang}"
-        mkdir -p "${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/"
+        create_new_dir "${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/"
         LANG_PO="${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/PortProton.po"
         LANG_MO="${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/PortProton.mo"
         TEMPLATE_POT="${PORT_WINE_PATH}/data/locales/PortProton.pot"
@@ -994,7 +994,7 @@ pw_check_and_download_dxvk_and_vkd3d () {
         then
             if "$pw_7z" x -y "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.zip" -o"${PW_VULKAN_DIR}/dgvoodoo2-tmp" 1>/dev/null ; then
                 try_remove_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.zip"
-                mkdir -p "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}/x32"
+                create_new_dir "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}/x32"
                 for DGV2_DLL_GLIDE in Glide Glide2x Glide3x ; do
                     mv -f "${PW_VULKAN_DIR}/dgvoodoo2-tmp/3Dfx/x86/${DGV2_DLL_GLIDE}.dll" "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}/x32/${DGV2_DLL_GLIDE,,}.dll"
                 done
@@ -1796,6 +1796,11 @@ start_portwine () {
     else export WINE_HEAP_DELAY_FREE="0"
     fi
 
+    if [[ "${PW_HEAP_ZERO_MEMORY}" == 1 ]]
+    then export WINE_HEAP_ZERO_MEMORY="1"
+    else export WINE_HEAP_ZERO_MEMORY="0"
+    fi
+
     if [[ "${PW_WINE_ALLOW_XIM}" == 1 ]]
     then export WINE_ALLOW_XIM="1"
     else export WINE_ALLOW_XIM="0"
@@ -1832,7 +1837,7 @@ start_portwine () {
 
     case "$PW_FORCE_USE_VSYNC" in  # 0-FORCE_OFF, 1-FORCE_ON, 2-BY_DEFAULT
         0)
-            export  vblank_mode=0
+            export vblank_mode=0
             export __GL_SYNC_TO_VBLANK=0
             ;;
         1)
@@ -1965,7 +1970,6 @@ start_portwine () {
             export __GL_YIELD="NOTHING"
             export mesa_glthread="true"
             export WINE_D3D_CONFIG="renderer=gl"
-            export ENABLE_VKBASALT="0"
             ;;
         1)
             # STABLE DXVK AND VKD3D
@@ -2001,12 +2005,6 @@ start_portwine () {
             CP_DGV2_FILES="glide glide2x glide3x"
             CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
             CP_WINE_FILES="ddraw d3d8 d3d11 d3d10core d3d10_1 d3d10 dxgi d3d12 d3d12core"
-            export __GL_YIELD="NOTHING"
-            export mesa_glthread="true"
-            export WINE_D3D_CONFIG="renderer=gl"
-            export ENABLE_VKBASALT="0"
-            export PW_MANGOHUD="0"
-            export PW_WINE_FULLSCREEN_FSR="0"
             unset FIND_D3D_MODULE D3D_MODULE_PATH
             if ! check_flatpak ; then
                 FIND_D3D_MODULE=$(dirname $(find /usr/ -maxdepth 4 -type f -name "d3dadapter9.so.*") 2>/dev/null)
@@ -2031,6 +2029,9 @@ start_portwine () {
                 print_info "D3D_MODULE_PATH=${D3D_MODULE_PATH}"
             fi
             var_winedlloverride_update "d3d9=n"
+            if [[ "${PW_USE_GAMESCOPE}" = "1" ]] && [[ ! -z $(echo "$LSPCI_VGA" | grep -i "AMD") ]] ; then
+                export AMD_DEBUG="nodcc"
+            fi
             ;;
         4)
             # GALLIUM ZINK
@@ -3900,8 +3901,7 @@ pw_edit_db () {
         rm_from_var PW_EDIT_DB_LIST "PW_USE_RUNTIME"
     fi
     pw_gui_for_edit_db $PW_EDIT_DB_LIST
-
-    # PW_FORCE_USE_VSYNC HEAP_DELAY_FREE
+    # PW_HEAP_DELAY_FREE PW_FORCE_USE_VSYNC PW_HEAP_ZERO_MEMORY_FREE
 }
 
 pw_autoinstall_from_db () {
