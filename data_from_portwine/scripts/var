@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #Author: Castro-Fidel (linux-gaming.ru)
-#SCRIPTS_NEXT_VERSION=2299
+#SCRIPTS_NEXT_VERSION=2300
 ########################################################################
 export LANGUAGES_LIST="ru es"
 export PW_MANGOHUD="0"
 export DEFAULT_MANGOHUD_CONFIG="arch,cpu_mhz,cpu_temp,engine_version,gamemode,gpu_core_clock,gpu_mem_clock,gpu_name,gpu_temp,ram,resolution,vkbasalt,vram,vulkan_driver,wine"
 export PW_VKBASALT_EFFECTS="Curves:cas"
 export PW_VKBASALT_FFX_CAS="0.66"
-export PW_VKBASALT="1"
+export PW_VKBASALT="0"
 export GAMESCOPE_ARGS="-F fsr"
 export PW_USE_RUNTIME="1"
 export PW_RT_MOUNT_RO=("")
@@ -59,7 +59,11 @@ export DXVK_LEGACY_VER="1.6.1"
 export DXVK_STABLE_VER="1.10.3-28"
 export DXVK_GIT_VER="2.3.1-9"
 export VKD3D_STABLE_VER="1.1-2602"
+export VKD3D_DGV2_VER="1.1-3622"
 export VKD3D_GIT_VER="1.1-3980"
+###DGV2###
+export PW_DGV2_ANTIALIASING="disabled"
+export PW_DGV2_FILTERING="disabled"
 ###PREFIX_VERSION###
 export DOTPFX_VER="48v7"
 export DEFPFX_VER="v1"
