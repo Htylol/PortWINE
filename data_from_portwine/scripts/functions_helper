@@ -198,7 +198,6 @@ check_process () {
 export -f check_process
 
 try_download () {
-    local filename="$(basename "$1")"
     local dest="$2"
     local silent="false"
     local no_mirror="false"
@@ -209,6 +208,13 @@ try_download () {
         no_mirror)
                 no_mirror=true
     esac
+
+    if [[ -n "${PW_AUTOINSTALL_EXE}" ]] \
+    && [[ "$no_mirror" == "true" ]] ; then
+        local filename="$(basename "${PW_AUTOINSTALL_EXE}")"
+    else
+        local filename="$(basename "$1")"
+    fi
 
     if [[ "${MIRROR}" == CDN ]] \
     && [[ "$no_mirror" != "true" ]]
@@ -1265,15 +1271,6 @@ pw_init_db () {
             check_variables PW_USE_FAKE_DLSS "0"
             check_variables PW_USE_RAY_TRACING "1"
         fi
-
-        if grep "ru" "${PORT_WINE_TMP_PATH}/PortProton_loc" &>/dev/null ; then
-            for chk_lang_and_uname in "steam_emu.ini" "steam_api.ini" "steam_api64.ini" ; do
-                if [[ -f "${PATH_TO_GAME}/${chk_lang_and_uname}" ]] ; then
-                    sed -i "s/Language=english/Language=russian/" "${PATH_TO_GAME}/${chk_lang_and_uname}"
-                    sed -i "/UserName=/c\UserName=${USER}" "${PATH_TO_GAME}/${chk_lang_and_uname}"
-                fi
-            done
-        fi
     fi
 
     [[ "${START_FROM_STEAM}" == 1 ]] && export PW_GUI_DISABLED_CS=1
@@ -1705,11 +1702,7 @@ start_portwine () {
             pw_wineboot -r
         fi
     fi
-    if grep 'xapofx1_' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" &>/dev/null ; then
-        sed -i '/xapofx1_/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
-        sed -i '/x3daudio/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
-        sed -i '/xaudio2/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
-    fi
+
     echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
 
     if [[ "${PW_NO_ESYNC}" == 1 ]]
@@ -2080,7 +2073,7 @@ start_portwine () {
 
     # DGVOODOO2 enable:
     if [[ "${PW_DGVOODOO2}" == "1" ]] ; then
-        print_info "Try copy native DGVOODOO2 files..."
+        print_info "Try create symlink DGVOODOO2 files..."
         PATH_TO_DGV2_FILES="${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}"
         CP_DGV2_FILES="ddraw d3dimm d3d8 d3d9 glide glide2x glide3x"
         try_copy_file "${PATH_TO_DGV2_FILES}/dgVoodoo.conf" "${WINEPREFIX}/drive_c/windows/syswow64/"
@@ -2164,7 +2157,7 @@ start_portwine () {
     done
 
     if [[ ! -z "$CP_DXVK_FILES" ]] ; then
-        print_info "Try copy native DXVK files..."
+        print_info "Try create symlink DXVK files..."
         check_variables DXVK_HDR "0"
         for wine_dxvk_dll in $CP_DXVK_FILES ; do
             if [[ -f "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll"  ]] ; then
@@ -2187,7 +2180,7 @@ start_portwine () {
     fi
 
     if [[ ! -z "$CP_VKD3D_FILES" ]] ; then
-        print_info "Try copy native VKD3D files..."
+        print_info "Try create symlink VKD3D files..."
         for wine_vkd3d_dll in $CP_VKD3D_FILES ; do
             if [[ -f "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" ]] ; then
                 try_force_link_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
@@ -2200,7 +2193,7 @@ start_portwine () {
     fi
 
     if [[ ! -z "$CP_D8VK_FILES" ]] ; then
-        print_info "Try copy native D8VK files..."
+        print_info "Try create symlink D8VK files..."
         PATH_TO_D8VK_FILES="${PW_VULKAN_DIR}/d8vk-${D8VK_VER}"
         for wine_d8vk_dll in $CP_D8VK_FILES ; do
             try_force_link_file "${PATH_TO_D8VK_FILES}/x32/${wine_d8vk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_d8vk_dll}.dll"
@@ -2210,7 +2203,7 @@ start_portwine () {
     fi
 
     if [[ "$CP_GALLIUM_NINE_FILES" == "d3d9" ]] ; then
-        print_info "Try copy native GALLIUM_NINE files..."
+        print_info "Try create symlink GALLIUM_NINE files..."
         PATH_TO_GALLIUM_NINE_FILES="${PW_PLUGINS_PATH}/gallium_nine_v.${PW_GALLIUM_NINE_VER}"
         try_force_link_file "${PATH_TO_GALLIUM_NINE_FILES}/lib32/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/syswow64/d3d9.dll"
         try_force_link_file "${PATH_TO_GALLIUM_NINE_FILES}/lib64/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/system32/d3d9.dll"
@@ -2398,6 +2391,16 @@ start_portwine () {
 
     if [[ -f "${PATH_TO_GAME}/dxvk.conf" ]] ; then
         export DXVK_CONFIG_FILE="${PATH_TO_GAME}/dxvk.conf"
+    fi
+
+    if  [[ "$LANGUAGE" == "ru" ]] ; then
+        for chk_lang_and_uname in "steam_emu.ini" "steam_api.ini" "steam_api64.ini" "SteamConfig.ini" ; do
+            if [[ -f "${PATH_TO_GAME}/${chk_lang_and_uname}" ]] ; then
+                sed -i "/Language/c\Language=russian/" "${PATH_TO_GAME}/${chk_lang_and_uname}"
+                sed -i "/UserName/c\UserName=${USER}" "${PATH_TO_GAME}/${chk_lang_and_uname}"
+                sed -i "/PlayerName/c\PlayerName=${USER}" "${PATH_TO_GAME}/${chk_lang_and_uname}"
+            fi
+        done
     fi
 
     if [[ "${PW_DISABLE_COMPOSITING}" == "1" ]] \
