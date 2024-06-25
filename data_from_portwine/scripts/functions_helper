@@ -1748,29 +1748,6 @@ start_portwine () {
         var_vkd3d_config_update single_queue
     fi
 
-    if [[ "${PW_USE_GAMESCOPE}" == 1 ]] \
-    && command -v gamescope &>/dev/null \
-    && ! check_gamescope_session
-    then
-        # Workaround for https://gitlab.freedesktop.org/mesa/mesa/-/issues/6029
-        if [[ -d "/sys/module/i915" ]] ; then
-            export INTEL_DEBUG="norbc"
-        fi
-        if [[ "${PW_GPU_USE}" != "disabled" ]] ; then
-            PW_vendorID="$(echo "${PW_VULKANINFO_PORTABLE[@]}" | grep -B3 "${PW_GPU_USE}" | grep vendorID | sort -u | awk -F'0x' '{print $2}')"
-            PW_deviceID="$(echo "${PW_VULKANINFO_PORTABLE[@]}" | grep -B3 "${PW_GPU_USE}" | grep deviceID | sort -u | awk -F'0x' '{print $2}')"
-            PW_ID_VIDEO="--prefer-vk-device ${PW_vendorID}:${PW_deviceID}"
-        else
-            unset PW_ID_VIDEO
-        fi
-        export PW_RUN_GAMESCOPE="gamescope -o 30 ${PW_ID_VIDEO} ${GAMESCOPE_ARGS} --"
-        export PW_WINE_FULLSCREEN_FSR="0"
-        export vk_xwayland_wait_ready="false"
-    else
-        export PW_USE_GAMESCOPE="0"
-        export PW_RUN_GAMESCOPE=""
-    fi
-
     enabled_fake_nvidia_videocard ()
     {
         if [[ "${1}" == old ]] ; then
@@ -2041,7 +2018,7 @@ start_portwine () {
             && ! check_wayland_session
             then
                 if check_gamescope_session \
-                || [[ "${PW_USE_GAMESCOPE}" = "1" ]]
+                || [[ "${PW_GAMESCOPE}" = "1" ]]
                 then
                     export AMD_DEBUG="nodcc"
                 fi
@@ -2060,7 +2037,7 @@ start_portwine () {
             export MESA_LOADER_DRIVER_OVERRIDE="zink"
             if ! check_wayland_session \
             && ! check_gamescope_session \
-            && [[ "${PW_USE_GAMESCOPE}" != "1" ]]
+            && [[ "${PW_GAMESCOPE}" != "1" ]]
             then
                 export LIBGL_KOPPER_DRI2="1"
             fi
@@ -2155,6 +2132,49 @@ start_portwine () {
         for rm_dgv2_dll in d3dimm glide glide2x glide3x ; do
             try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/${rm_dgv2_dll}.dll"
         done
+    fi
+
+    # GAMESCOPE enable:
+    if [[ "${PW_GAMESCOPE}" == 1 ]] \
+    && command -v gamescope &>/dev/null \
+    && ! check_gamescope_session
+    then
+        # Workaround for https://gitlab.freedesktop.org/mesa/mesa/-/issues/6029
+        if [[ -d "/sys/module/i915" ]] ; then
+            export INTEL_DEBUG="norbc"
+        fi
+        if [[ "${PW_GPU_USE}" != "disabled" ]] ; then
+            PW_vendorID="$(echo "${PW_VULKANINFO_PORTABLE}" | grep -B3 "${PW_GPU_USE}" | grep vendorID | sort -u | awk -F'0x' '{print $2}')"
+            PW_deviceID="$(echo "${PW_VULKANINFO_PORTABLE}" | grep -B3 "${PW_GPU_USE}" | grep deviceID | sort -u | awk -F'0x' '{print $2}')"
+            PW_ID_VIDEO="--prefer-vk-device ${PW_vendorID}:${PW_deviceID}"
+        else
+            unset PW_ID_VIDEO
+        fi
+        if [[ "${PW_GAMESCOPE_ARGS}" != "disabled" ]] ; then
+        export PW_RUN_GAMESCOPE="gamescope -o 30 ${PW_ID_VIDEO} ${PW_GAMESCOPE_ARGS} --"
+        export PW_WINE_FULLSCREEN_FSR="0"
+        export vk_xwayland_wait_ready="false"
+        fi
+
+        if [[ "${PW_GS_INTERNAL_RESOLUTION}" != "disabled" ]] ; then
+            export PW_DGV2_ANTIALIASING="${PW_DGV2_ANTIALIASING}"
+            sed -i "s/Antialiasing = appdriven/Antialiasing = ${PW_DGV2_ANTIALIASING}x/g" "$DGV2CONF"
+        fi
+        if [[ "${PW_GS_SHOW_RESOLUTION}" != "disabled" ]] ; then
+            export PW_DGV2_ANTIALIASING="${PW_DGV2_ANTIALIASING}"
+            sed -i "s/Antialiasing = appdriven/Antialiasing = ${PW_DGV2_ANTIALIASING}x/g" "$DGV2CONF"
+        fi
+        if [[ "${PW_GS_FRAME_LIMIT}" != "disabled" ]] ; then
+            export PW_DGV2_ANTIALIASING="${PW_DGV2_ANTIALIASING}"
+            sed -i "s/Antialiasing = appdriven/Antialiasing = ${PW_DGV2_ANTIALIASING}x/g" "$DGV2CONF"
+        fi
+        if [[ "${PW_GS_FRAME_LIMIT_UNFOCUSED}" != "disabled" ]] ; then
+            export PW_DGV2_ANTIALIASING="${PW_DGV2_ANTIALIASING}"
+            sed -i "s/Antialiasing = appdriven/Antialiasing = ${PW_DGV2_ANTIALIASING}x/g" "$DGV2CONF"
+        fi
+    else
+        export PW_GAMESCOPE="0"
+        export PW_RUN_GAMESCOPE=""
     fi
 
     # force use dxgi.dll from wine
@@ -3101,7 +3121,7 @@ export -f gui_proton_downloader
 # GUI EDIT_DB
 gui_edit_db () {
     KEY_EDIT_DB_GUI=$RANDOM
-    PW_EDIT_DB_LIST="PW_MANGOHUD PW_MANGOHUD_USER_CONF PW_VKBASALT PW_VKBASALT_USER_CONF PW_DGVOODOO2 PW_USE_GAMESCOPE
+    PW_EDIT_DB_LIST="PW_MANGOHUD PW_MANGOHUD_USER_CONF PW_VKBASALT PW_VKBASALT_USER_CONF PW_DGVOODOO2 PW_GAMESCOPE
     PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU
     PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME
     PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE
@@ -3156,7 +3176,7 @@ if [[ "${SKIP_EDIT_DB_TEXT_INFO}" != 1 ]] ; then
     export PW_USE_SYSTEM_VK_LAYERS_INFO=$(gettext 'Use system mangohud, vkBasalt, obs-vkcapture and other applications using vulkan layers')
     export PW_USE_OBS_VKCAPTURE_INFO=$(gettext 'Enable the ability to write to OBS Studio using obs-vkcapture (ATTENTION: the forced use of system mangohud, vkBasalt, obs-vkcapture and other applications using vulkan layers will be enabled)')
     export PW_DISABLE_COMPOSITING_INFO=$(gettext 'Disable desktop compositing (effects). It often improves performance.')
-    export PW_USE_GAMESCOPE_INFO=$(gettext '<b>Super + F :</b> Toggle fullscreen
+    export PW_GAMESCOPE_INFO=$(gettext '<b>Super + F :</b> Toggle fullscreen
 <b>Super + N :</b> Toggle nearest neighbour filtering
 <b>Super + U :</b> Toggle FSR upscaling
 <b>Super + Y :</b> Toggle NIS upscaling
@@ -3262,6 +3282,16 @@ A brief instruction:
     --field="$(gettext "Forcibly select the OpenGL version for the game")!$(gettext "You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)") :CB" "${PW_MESA_GL_VERSION_OVERRIDE}!disabled!4.6COMPAT!4.6!4.5COMPAT!4.5!3.3COMPAT!3.3" \
     --field="$(gettext "Forcibly select the VKD3D feature level")!$(gettext "You can set a forced feature level VKD3D for games on DirectX12") :${VKD3D_CB}" "${PW_VKD3D_FEATURE_LEVEL}!disabled!12_2!12_1!12_0!11_1!11_0" \
     --field="$(gettext "Force certain locale for an app:")!$(gettext "Fixes encoding issues in legacy software") :CB" "${PW_LOCALE_SELECT}!disabled!$LOCALE_LIST" \
+    --field="$(gettext "Add arguments for GAMESCOPE:")!$(gettext "<b>-W, -H:</b> set the resolution used by gamescope. Resizing the gamescope window will update these settings. Ignored in embedded mode. If -H is specified but -W isn't, a 16:9 aspect ratio is assumed. Defaults to 1280×720.
+<b>-w, -h:</b> set the resolution used by the game. If -h is specified but -w isn't, a 16:9 aspect ratio is assumed. Defaults to the values specified in -W and -H.
+<b>-r:</b> set a frame-rate limit for the game. Specified in frames per second. Defaults to unlimited.
+<b>-o:</b> set a frame-rate limit for the game when unfocused. Specified in frames per second. Defaults to unlimited.
+<b>-F fsr:</b> use AMD FidelityFX™ Super Resolution 1.0 for upscaling.
+<b>-F nis:</b> use NVIDIA Image Scaling v1.0.3 for upscaling.
+<b>-S integer:</b> use integer scaling.
+<b>-S stretch:</b> use stretch scaling, the game will fill the window. (e.g. 4:3 to 16:9).
+<b>-b:</b> create a border-less window.
+<b>-f:</b> create a full-screen window.") :CBE" "\\${PW_GAMESCOPE_ARGS}!-r 60 -F fsr!" \
     1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
 
     "${pw_yad}" --notebook --key="$KEY_EDIT_DB_GUI" --title "$(gettext "EDIT DB")" --text-align=center \
@@ -3312,6 +3342,7 @@ A brief instruction:
     PW_MESA_GL_VERSION_OVERRIDE="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $9}')"
     PW_VKD3D_FEATURE_LEVEL="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $10}')"
     PW_LOCALE_SELECT="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $11}')"
+    PW_GAMESCOPE_ARGS="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $12}')"
 
     if [[ "${CPU_LIMIT}" != "disabled" ]] ; then
         export PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $((${CPU_LIMIT} - 1)))"
@@ -3319,7 +3350,7 @@ A brief instruction:
         export PW_WINE_CPU_TOPOLOGY="disabled"
     fi
 
-    edit_db_from_gui ${PW_EDIT_DB_LIST} LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY GAMESCOPE_ARGS \
+    edit_db_from_gui ${PW_EDIT_DB_LIST} LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY PW_GAMESCOPE_ARGS \
     PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PW_LOCALE_SELECT
 
     if [[ -z "$MANGOHUD_CONFIG" ]] ; then
@@ -3621,6 +3652,7 @@ fi
         --button="$(gettext "DISABLE") MANGOHUD"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Disable MangoHud and go to the previous menu")":182 \
         --button="$(gettext "PREVIEW CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Start vkcube for preview changes")":184 \
         --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":186  2>/dev/null
+
     YAD_MANGOHUD_STATUS="$?"
     case "${YAD_MANGOHUD_STATUS}" in
         1|252)
@@ -3814,61 +3846,159 @@ fi
 
 # GUI GAMESCOPE
 gui_gamescope () {
-    unset ADD_CHK_BOX_GAMESCOPE
+    KEY_GS_GUI=$RANDOM
+    LIST_GS=(
+        fullscreen borderess_window force_fullscreen force_grab_cursor
+        force_grab_keyboard enable_hdr enable_wide_gammut enable_hdr_inverse
+        immediate_flips adaptive_sync force_composition debug_hud force_hdr_support
+        force_hdr_enable prefer_vulkan_device expose_wayland realtime_schuduling
+        headless enable_gamescope_wsi
+    )
 
 if [[ "${SKIP_GAMESCOPE_TEXT_INFO}" != 1 ]] ; then
+    export PW_GS_fullscreen_INFO=$(gettext 'Fullscreen window')
+    export PW_GS_borderess_window_INFO=$(gettext 'Borderess window')
+    export PW_GS_force_fullscreen_INFO=$(gettext 'Force windows inside of GameScope to be the size of the nested display')
+    export PW_GS_force_grab_cursor_INFO=$(gettext 'Lock the mouse cursor inside of the GameScope window')
+    export PW_GS_force_grab_keyboard_INFO=$(gettext 'Lock keyboard input exclusively to GameScope window')
+    export PW_GS_enable_hdr_INFO=$(gettext 'Enable HDR Output (needs GameScope WSI layer enabled for support from clients). If a HDR supported display is used, GameScope will use tonemapped SDR')
+    export PW_GS_enable_wide_gammut_INFO=$(gettext 'Treat SDR sRGB content as having Rec.2020 primaries - Makes colors more vivid at the cost of correctness (for SDR)')
+    export PW_GS_enable_hdr_inverse_INFO=$(gettext 'Enable SDR to HDE inverse tone mapping - Only works for SDR input')
+    export PW_GS_immediate_flips_INFO=$(gettext 'Enable immediate flips, equivalent to the Steam Decks "Allow Tearing" option')
+    export PW_GS_adaptive_sync_INFO=$(gettext 'Enable Adaptive Sync, or "Variable Refresh Rate", if available, e.g. FreeSync')
+    export PW_GS_force_composition_INFO=$(gettext 'Disables direct scan-out')
+    export PW_GS_force_hdr_support_INFO=$(gettext 'Forces support for HDR and associated opptions even if the current display does not support it')
+    export PW_GS_force_hdr_enable_INFO=$(gettext 'Force support and output for HDR10 PQ even if the current display does not support it. This will look very wrong on non-HDR displays')
+    export PW_GS_prefer_vulkan_device_INFO=$(gettext 'Prefer Vulkan device for compositing')
+    export PW_GS_expose_wayland_INFO=$(gettext 'Expose Wayland clients using xdg-shell')
+    export PW_GS_realtime_schuduling_INFO=$(gettext 'Enable GameScope realtime scheduling')
+    export PW_GS_headless_INFO=$(gettext 'Run application with headless GameScope (windowless)')
+    export PW_GS_enable_gamescope_wsi_INFO=$(gettext 'This can be useful for some HDR options and for some DXVK v2.3 vsync optimisations')
 
     export SKIP_GAMESCOPE_TEXT_INFO=1
 fi
 
+    PW_GAMESCOPE_CONFIG=($(echo "$DEFAULT_MANGOHUD_CONFIG" | tr ',' '\n' | grep -v '='))
+
+    for add_list_gs in "${LIST_GS[@]}"; do
+        PW_GS_GUI_HELP="PW_GS_${add_list_gs}_INFO"
+        if grep -wo "$add_list_gs" <<<"${PW_GAMESCOPE_ARGUMENTS[@]}" &>/dev/null ; then
+            ADD_GUI_GS+="--field=${CHKBOX_SPACE}$(echo ${add_list_gs} | sed 's/_/ /g' | tr [[:lower:]] [[:upper:]])!${!PW_GS_GUI_HELP}:${THEME_CHKBOX}%TRUE%"
+        else
+            ADD_GUI_GS+="--field=${CHKBOX_SPACE}$(echo ${add_list_gs} | sed 's/_/ /g' | tr [[:lower:]] [[:upper:]])!${!PW_GS_GUI_HELP}:${THEME_CHKBOX}%FALSE%"
+        fi
+    done
+
     old_IFS=$IFS
     IFS="%"
-    "${pw_yad}" --plug=$KEY_GAMESCOP_GUI --form --separator=" " --columns=3 ${ADD_CHK_BOX_GAMESCOPE} \
-    1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db" 2>/dev/null &
+    "${pw_yad}" --plug=$KEY_GS_GUI --tabnum="1" --form --columns=4 --separator=" " --text-align=center ${ADD_GUI_GS} \
+    --text="$(gettext "Change settings gamescope for") <b>${PORTWINE_DB}</b>\n $(gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" \
+    --gui-type-text=${GAMESCOPE_GUI_TYPE_TEXT_UP} --gui-type-layout=${GAMESCOPE_GUI_TYPE_LAYOUT_UP} \
+    1> "${PORT_WINE_TMP_PATH}/tmp_yad_gs_set" 2>/dev/null &
     IFS=$old_IFS
 
-    output_yad_gamescope="$("${pw_yad}" --title "GAMESCOPE" --text-align=center --height="350" \
-    --text "$(gettext "Change settings gamescope for") <b>${PORTWINE_DB}</b>\n $(gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand --center --form \
-    --field="$(gettext "Add arguments for GAMESCOPE:")!$(gettext "
-<b>-W, -H:</b> set the resolution used by gamescope. Resizing the gamescope window will update these settings. Ignored in embedded mode. If -H is specified but -W isn't, a 16:9 aspect ratio is assumed. Defaults to 1280×720.
-<b>-w, -h:</b> set the resolution used by the game. If -h is specified but -w isn't, a 16:9 aspect ratio is assumed. Defaults to the values specified in -W and -H.
-<b>-r:</b> set a frame-rate limit for the game. Specified in frames per second. Defaults to unlimited.
-<b>-o:</b> set a frame-rate limit for the game when unfocused. Specified in frames per second. Defaults to unlimited.
-<b>-F fsr:</b> use AMD FidelityFX™ Super Resolution 1.0 for upscaling.
-<b>-F nis:</b> use NVIDIA Image Scaling v1.0.3 for upscaling.
-<b>-S integer:</b> use integer scaling.
-<b>-S stretch:</b> use stretch scaling, the game will fill the window. (e.g. 4:3 to 16:9).
-<b>-b:</b> create a border-less window.
-<b>-f:</b> create a full-screen window.") :CBE" "\\${GAMESCOPE_ARGS}!-r 60 -F fsr!" \
+    GAMESCOPE_XRANDR="$(echo "${PW_XRANDR}" | grep "[0-9]x" | awk '{print $1}' | grep "^[0-9]" | tr '\n' '!')"
+
+    "${pw_yad}" --plug=$KEY_GS_GUI --tabnum="2" --form --columns=3 --separator="%" \
+    --gui-type-text=${GAMESCOPE_GUI_TYPE_TEXT_DOWN} --gui-type-layout=${GAMESCOPE_GUI_TYPE_LAYOUT_DOWN} \
+    --field="${CHKBOX_SPACE}$(gettext "Internal resolution")!$(gettext "Set the resolution used") :CBE" "${PW_GS_INTERNAL_RESOLUTION}!${GAMESCOPE_XRANDR}" \
+    --field="${CHKBOX_SPACE}$(gettext "Show resolution")!$(gettext "Set the resolution used by gamescope. Resizing the gamescope window will update these settings. Defaults to 1280x720.") :CBE" "${PW_GS_SHOW_RESOLUTION}!${GAMESCOPE_XRANDR}" \
+    --field="${CHKBOX_SPACE}$(gettext "Frame limit")!$(gettext "Set a framerate limit. Specified in frames per second") :CBE" "${PW_GS_FRAME_LIMIT}!disabled!30!60!90!120!144" \
+    --field="${CHKBOX_SPACE}$(gettext "Frame limit unfocused")!$(gettext "Set a framerate limit for the game when unfocused. Specified in frames per second.") :CBE" "${PW_GS_FRAME_LIMIT_UNFOCUSED}!disabled!30!60!90!120!144" \
+    --field="${CHKBOX_SPACE}$(gettext "Force orientation")!$(gettext "Rotate the internal GameScope display") :CB" "disabled!left!right!normal!upsidedown" \
+    --field="${CHKBOX_SPACE}$(gettext "DRM mode algorithm")!$(gettext "DRM Mode Generation Algorithm to use") :CB" "disabled!cvt!fixed" \
+    --field="${CHKBOX_SPACE}$(gettext "Mouse sensitivity")!$(gettext "Configurable mouse sensitivity, multiply mouse movement by specified decimal number amount") :NUM" "" \
+    --field="${CHKBOX_SPACE}$(gettext "Upscale sharpness")!$(gettext "Sharpening value for FidelityFX SuperResolution 1.0 (FSR) and NVIDIA Image Scaling v1.0.3 (NIS). 0 is max sharpening, 20 is min sharpening.") :NUM" "" \
+    --field="${CHKBOX_SPACE}$(gettext "Max scale factor")!$(gettext "Maximum Scale Factor (0 is unused)") :NUM" "" \
+    --field="${CHKBOX_SPACE}$(gettext "HDR SDR nits")!$(gettext "Set the luminance of SDR content in nits - Default is 400") :NUM" "" \
+    --field="${CHKBOX_SPACE}$(gettext "HDR inverse SDR")!$(gettext "Set the luminance of SDR content in nets used as the input for the inverse tone mapping process - Maximum is 1000 nits") :NUM" "" \
+    --field="${CHKBOX_SPACE}$(gettext "HDR inverse target")!$(gettext "Set the target luninance of the inverse tone mapping process - Max is 10000 nits") :NUM" "" \
+    --field="${CHKBOX_SPACE}$(gettext "Hide cursor delay")!$(gettext "Amount of time in milliseconds to wait before hiding the cursor") :NUM" "" \
+    --field="${CHKBOX_SPACE}$(gettext "Filter mode")!$(gettext "Use a filter such as AMD FidelityFX SuperResolution 1.0 (FSR) or NVIDIA Image Scaling v1.0.3 (NIS)") :CB" "disabled!linear!nearest!fsr!nis!pixel" \
+    --field="${CHKBOX_SPACE}$(gettext "Scale mode")!$(gettext "Specify how to scale the GameScope window content") :CB" "disabled!auto!integer!fit!fill!stretch" \
+    --field="${CHKBOX_SPACE}$(gettext "Default touch mode")!$(gettext "Default action on touch (disabled will ignore flag)") :CB" "disabled!auto!integer!fit!fill!stretch" \
+    1> "${PORT_WINE_TMP_PATH}/tmp_yad_gs_set_cb" 2>/dev/null &
+
+    "${pw_yad}" --paned --key="$KEY_GS_GUI" --title="GameScope" --center \
+    --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+    --gui-type=settings-paned \
     --button="$(gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Cancel the current changes and return to the previous menu")":1 \
     --button="$(gettext "DISABLE") GAMESCOPE"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Disable GameScope and go to the previous menu")":162 \
-    --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":166 2>/dev/null)"
-    YAD_STATUS="$?"
-    export SKIP_CHECK_UPDATES=1
+    --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":166 \
+    2>/dev/null
 
-    GAMESCOPE_ARGS="$(echo "$output_yad_gamescope" | awk -F"%" '{print $1}')"
-    edit_db_from_gui
-
-    case "${YAD_STATUS}" in
+    YAD_GAMESCOPE_STATUS="$?"
+    case "${YAD_GAMESCOPE_STATUS}" in
         1|252)
             export SKIP_CHECK_UPDATES=1
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
             ;;
         162)
-            export PW_USE_GAMESCOPE=0
-            edit_db_from_gui PW_USE_GAMESCOPE
+            export PW_GAMESCOPE=0
+            edit_db_from_gui PW_GAMESCOPE
             export SKIP_CHECK_UPDATES=1
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
             ;;
         166)
-            export PW_USE_GAMESCOPE=1
+            export PW_GAMESCOPE=1
             ;;
     esac
 
-    edit_db_from_gui PW_USE_GAMESCOPE GAMESCOPE_ARGS
+    YAD_GS_SET=$(<"${PORT_WINE_TMP_PATH}/tmp_yad_gs_set")
+    YAD_GS_SET_CB=$(<"${PORT_WINE_TMP_PATH}/tmp_yad_gs_set_cb")
+
+    MONITOR_HEIGHT="$(echo $PW_SCREEN_RESOLUTION | awk -F'x' '{print $2}')"
+    MH_FONT_SIZE="font_size=$(( MONITOR_HEIGHT / 45 ))"
+
+    local INT_COUNT_GS=0
+    for read_list_gs in ${YAD_GS_SET} ; do
+        if [[ "$read_list_gs" == "TRUE" ]]
+        then local GUI_GS_RESULT+="$(echo "${LIST_GS[$INT_COUNT_GS]}," | sed 's/ /_/g' | tr [[:upper:]] [[:lower:]] )"
+        fi
+        ((INT_COUNT_MH++))
+    done
+
+    local INT_COUNT_GS_FPS=0
+    for read_list_mh_fps in ${YAD_MH_FPS_LIMIT} ; do
+        if [[ "$read_list_mh_fps" == "TRUE" ]]
+        then local GUI_MH_FPS_RESULT+="${GET_REFRESH_RATE[$INT_COUNT_MH_FPS]}+"
+        fi
+        ((INT_COUNT_MH_FPS++))
+    done
+
+    GUI_MH_FPS_RESULT="${GUI_MH_FPS_RESULT}"
+    if [ "$(echo "${GUI_MH_FPS_RESULT}" | awk -F'+' '{print $2}')" ] ; then
+        export FPS_LIMIT="${GUI_MH_FPS_RESULT%+}"
+        if [[ ! "${GUI_MH_RESULT}" =~ "show_fps_limit" ]] ; then
+            GUI_MH_RESULT="${GUI_MH_RESULT}show_fps_limit,"
+        fi
+    else
+        export FPS_LIMIT="${GUI_MH_FPS_RESULT%+}"
+    fi
+
+    if [[ ! -z "$MH_FONT_SIZE" ]]
+    then GUI_MH_RESULT="${GUI_MH_RESULT}${MH_FONT_SIZE}"
+    else GUI_MH_RESULT="${GUI_MH_RESULT%,}"
+    fi
+
+    if [[ ! -z "$FPS_LIMIT" ]] ; then
+        GUI_MH_RESULT="${GUI_MH_RESULT},fps_limit=$FPS_LIMIT"
+    elif [[ "$FPS_LIMIT" == "disabled" ]] ; then
+        GUI_MH_RESULT="${GUI_MH_RESULT},fps_limit=0"
+    fi
+
+    if [[ "${GUI_MH_RESULT}" =~ "fps_only" ]] ; then
+        local GUI_MH_RESULT="fps_only"
+        print_info "In the MangoHud config fps_only is detected all settings are reseted"
+    fi
+
+    export MANGOHUD_CONFIG="${GUI_MH_RESULT}"
+    export PW_MANGOHUD FPS_LIMIT
+    edit_db_from_gui MANGOHUD_CONFIG PW_MANGOHUD FPS_LIMIT
+
+    edit_db_from_gui PW_GAMESCOPE GAMESCOPE_ARGS
 
     export SKIP_CHECK_UPDATES=1
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
@@ -4250,7 +4380,7 @@ portwine_start_debug () {
     echo "PW_SCREEN_PRIMARY=$PW_SCREEN_PRIMARY" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "----------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "Vulkan info device name:" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "${PW_VULKANINFO_PORTABLE[@]}" | grep -E '^GPU|deviceName|driverName' >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "${PW_VULKANINFO_PORTABLE}" | grep -E '^GPU|deviceName|driverName' >> "${PORT_WINE_PATH}/PortProton.log"
     "${PW_PLUGINS_PATH}/portable/bin/vkcube" --c 50
     if [ $? -eq 0 ]; then
         echo "Vulkan cube test passed successfully" >> "${PORT_WINE_PATH}/PortProton.log"

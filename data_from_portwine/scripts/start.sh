@@ -197,15 +197,15 @@ then
     else
         PW_VULKANINFO_PORTABLE="$($PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo 2>/dev/null)"
     fi
-    VULKAN_DRIVER_NAME="$(echo "${PW_VULKANINFO_PORTABLE[@]}" | grep driverName | awk '{print$3}' | head -1)"
-    GET_GPU_NAMES=$(echo "${PW_VULKANINFO_PORTABLE[@]}" | awk -F '=' '/deviceName/{print $2}' | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
+    VULKAN_DRIVER_NAME="$(echo "${PW_VULKANINFO_PORTABLE}" | grep driverName | awk '{print$3}' | head -1)"
+    GET_GPU_NAMES=$(echo "${PW_VULKANINFO_PORTABLE}" | awk -F '=' '/deviceName/{print $2}' | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
     LSPCI_VGA="$(lspci -k 2>/dev/null | grep -E 'VGA|3D' | tr -d '\n')"
     export PW_VULKANINFO_PORTABLE VULKAN_DRIVER_NAME GET_GPU_NAMES LSPCI_VGA
 
     if command -v xrandr &>/dev/null ; then
-        PW_XRANDR="$(xrandr)"
-        PW_SCREEN_RESOLUTION="$(echo "${PW_XRANDR[@]}" | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
-        PW_SCREEN_PRIMARY="$(echo "${PW_XRANDR[@]}" | grep "primary" | awk '{print $1}')"
+        PW_XRANDR="$(xrandr --current 2>/dev/null)"
+        PW_SCREEN_RESOLUTION="$(echo "${PW_XRANDR}" | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
+        PW_SCREEN_PRIMARY="$(echo "${PW_XRANDR}" | grep "primary" | awk '{print $1}')"
         export PW_XRANDR PW_SCREEN_PRIMARY PW_SCREEN_RESOLUTION
         echo ""
         print_var PW_SCREEN_RESOLUTION PW_SCREEN_PRIMARY
@@ -224,12 +224,12 @@ then
 
     GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
     unset LOCALE_LIST
-    PW_LOCALE_ALL="$(locale -a)"
+    PW_LOCALE_ALL="$(locale -a 2>/dev/null)"
     for LOCALE in $GET_LOCALE_LIST ; do
         if locale -a | grep -i "$LOCALE" &>/dev/null ; then
             if [[ ! -z "$LOCALE_LIST" ]]
-            then LOCALE_LIST+="!$(echo "${PW_LOCALE_ALL[@]}" | grep -i "$LOCALE")"
-            else LOCALE_LIST="$(echo "${PW_LOCALE_ALL[@]}" | grep -i "$LOCALE")"
+            then LOCALE_LIST+="!$(echo "${PW_LOCALE_ALL}" | grep -i "$LOCALE")"
+            else LOCALE_LIST="$(echo "${PW_LOCALE_ALL}" | grep -i "$LOCALE")"
             fi
         fi
     done
