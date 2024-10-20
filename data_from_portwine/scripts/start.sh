@@ -289,8 +289,10 @@ if ! check_flatpak ; then
 fi
 
 if check_flatpak ; then
-    try_remove_dir "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
-else pw_download_libs
+    export PW_USE_RUNTIME="0"
+else
+    export PW_USE_RUNTIME="1"
+    pw_download_libs
 fi
 
 pw_init_db

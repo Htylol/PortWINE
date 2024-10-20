@@ -10,7 +10,6 @@ export PW_VKBASALT="0"
 export PW_MANGOHUD="0"
 export PW_DGVOODOO2="0"
 export PW_GAMESCOPE="0"
-export PW_USE_RUNTIME="1"
 export PW_RT_MOUNT_RO=("")
 export PW_RT_MOUNT_RW=("/media" "/mnt" "/run/media/${USER}" "${PORT_WINE_PATH}")
 #export PW_SANDBOX_HOME_PATH="${PORT_WINE_PATH}"

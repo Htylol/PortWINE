@@ -1180,7 +1180,7 @@ init_wine_ver () {
 }
 
 pw_init_runtime () {
-    check_flatpak && export PW_USE_RUNTIME="0"
+    check_flatpak && [[ $PW_USE_RUNTIME == 1 ]] && pw_download_libs
     if [[ "$PW_USE_RUNTIME" != "1" ]] \
     || [[ "$PW_WINE_USE" == "USE_SYSTEM_WINE" ]]
     then
@@ -4323,10 +4323,6 @@ gui_edit_db () {
         unset 'PW_EDIT_DB_LIST[20]' # "PW_USE_US_LAYOUT"
     else
         unset 'PW_EDIT_DB_LIST[31]' # "PW_USE_NATIVE_WAYLAND"
-    fi
-
-    if check_flatpak ; then
-        unset 'PW_EDIT_DB_LIST[29]' # "PW_USE_RUNTIME"
     fi
 
     # PW_HEAP_DELAY_FREE
