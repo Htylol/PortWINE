@@ -520,16 +520,9 @@ then DIST_ADD_TO_GUI+="!${translations[USE_SYSTEM_WINE]}"
 fi
 
 SORT_OPENGL="${translations[WineD3D OpenGL (For video cards without Vulkan)]}"
-SORT_LEGACY="${translations[Legacy DXVK (Vulkan v1.1)]}"
-SORT_STABLE="${translations[Stable DXVK, VKD3D (Vulkan v1.2)]}"
-SORT_NEWEST="${translations[Newest DXVK, VKD3D, D8VK (Vulkan v1.3+)]}"
-
-case "$PW_VULKAN_USE" in
-    0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY" ;;
-    1) PW_DEFAULT_VULKAN_USE="$SORT_STABLE!$SORT_NEWEST!$SORT_LEGACY!$SORT_OPENGL" ;;
-  3|5) PW_DEFAULT_VULKAN_USE="$SORT_LEGACY!$SORT_NEWEST!$SORT_STABLE!$SORT_OPENGL" ;;
-    *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY!$SORT_OPENGL" ;;
-esac
+SORT_SAREK="${translations[DXVK, VKD3D (Sarek) (Vulkan v1.1+)]}"
+SORT_STABLE="${translations[DXVK, VKD3D (Stable) (Vulkan v1.3+)]}"
+SORT_NEWEST="${translations[DXVK, VKD3D (Newest) (Vulkan v1.3+)]}"
 
 if [[ $PW_WINE_USE == PROTON_LG ]] ; then
     PW_WINE_USE="${PW_PROTON_LG_VER}"
@@ -573,6 +566,62 @@ if [[ -f "$portwine_exe" ]] ; then
             else
                 PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$PW_NAME_DESKTOP_PROXY" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
             fi
+        fi
+
+        [[ $PW_VULKAN_USE =~ [3-5] ]] && unset PW_VULKAN_USE && echo 1
+        pw_check_vulkan
+        if [[ -f "${PW_TMPFS_PATH}/vulkaninfo.tmp" ]] ; then
+            unset VULKAN_VERSION_CHECK VULKAN_DRIVER_VERSION VULKAN_DEVICE_NAME
+            count="0"
+            while read -r line ; do
+                [[ $line =~ apiVersion ]] && VULKAN_VERSION_CHECK["$count"]="$line"
+                [[ $line =~ driverVersion ]] && VULKAN_DRIVER_VERSION["$count"]="$line"
+                if [[ $line =~ deviceName ]] ; then
+                    if [[ $line == *"$PW_GPU_USE"* ]] ; then
+                        VULKAN_DEVICE_NAME["$count"]="$PW_GPU_USE"
+                        break
+                    else
+                        if [[ $line =~ llvmpipe ]] ; then
+                            unset 'VULKAN_VERSION_CHECK["$count"]' 'VULKAN_DRIVER_VERSION["$count"]'
+                        else
+                            VULKAN_DEVICE_NAME["$count"]="$line"
+                            (( count++ ))
+                        fi
+                    fi
+                fi
+            done < "${PW_TMPFS_PATH}/vulkaninfo.tmp"
+            if [[ ${VULKAN_VERSION_CHECK[*]} =~ 1.[3-9]+. ]] ; then
+                for number in $(seq 0 $(( ${#VULKAN_VERSION_CHECK[@]} - 1 ))) ; do
+                    VULKAN_DRIVER_VERSION[$number]="${VULKAN_DRIVER_VERSION[$number]//*= /}"
+                    VULKAN_DRIVER_VERSION[$number]="${VULKAN_DRIVER_VERSION[$number]// (*/}"
+                    if [[ ${VULKAN_DEVICE_NAME[$number],,} =~ (amd|intel) && ${VULKAN_DRIVER_VERSION[$number]} > 25 ]] \
+                    || [[ ${VULKAN_DEVICE_NAME[$number],,} =~ nvidia && ${VULKAN_DRIVER_VERSION[$number]} > 550.54.13 ]] ; then
+                        [[ -z $PW_VULKAN_USE ]] && export PW_VULKAN_USE="2"
+                        PW_VULKAN_DRIVERS_NEW="1"
+                        break
+                    else
+                        [[ -z $PW_VULKAN_USE ]] && export PW_VULKAN_USE="6"
+                    fi
+                done
+            elif [[ ${VULKAN_VERSION_CHECK[*]} =~ 1.[1-2]. ]] ; then
+                [[ -z $PW_VULKAN_USE ]] && export PW_VULKAN_USE="1"
+            fi
+        fi
+        [[ -z $PW_VULKAN_USE ]] && export PW_VULKAN_USE="0"
+
+        if [[ $PW_VULKAN_DRIVERS_NEW == "1" ]] ; then
+            case "$PW_VULKAN_USE" in
+                0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_NEWEST!$SORT_STABLE!$SORT_SAREK" ;;
+                1) PW_DEFAULT_VULKAN_USE="$SORT_SAREK!$SORT_NEWEST!$SORT_STABLE!$SORT_OPENGL" ;;
+                6) PW_DEFAULT_VULKAN_USE="$SORT_STABLE!$SORT_NEWEST!$SORT_SAREK!$SORT_OPENGL" ;;
+                *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_SAREK!$SORT_OPENGL" ;;
+            esac
+        else
+            case "$PW_VULKAN_USE" in
+                0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_STABLE!$SORT_SAREK" ;;
+                1) PW_DEFAULT_VULKAN_USE="$SORT_SAREK!$SORT_STABLE!$SORT_OPENGL" ;;
+                *) PW_DEFAULT_VULKAN_USE="$SORT_STABLE!$SORT_SAREK!$SORT_OPENGL" ;;
+            esac
         fi
 
         export KEY_START="$RANDOM"
@@ -822,6 +871,8 @@ else
     else export PW_GUI_SORT_TABS=(2 3 4 5 1)
     fi
 
+    PW_DEFAULT_VULKAN_USE="$SORT_STABLE!$SORT_SAREK!$SORT_OPENGL"
+
     KEY_MENU="$RANDOM"
 
     IFS="%"
@@ -967,9 +1018,9 @@ fi
 
 case "${VULKAN_MOD}" in
     "$SORT_OPENGL" )     export PW_VULKAN_USE="0" ;;
-    "$SORT_STABLE" )     export PW_VULKAN_USE="1" ;;
+    "$SORT_SAREK"  )     export PW_VULKAN_USE="1" ;;
     "$SORT_NEWEST" )     export PW_VULKAN_USE="2" ;;
-    "$SORT_LEGACY" )     export PW_VULKAN_USE="3" ;;
+    "$SORT_STABLE" )     export PW_VULKAN_USE="6" ;;
 esac
 
 init_wine_ver
